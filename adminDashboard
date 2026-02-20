@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Dashboard – Smart Attendance</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  --primary:#2563eb; --primary-light:#3b82f6;
+  --bg:#f6f8fb; --card:#fff; --muted:#64748b;
+  --danger:#ef4444; --success:#22c55e;
+  --shadow:0 2px 16px rgba(30,64,175,.07);
+  --radius:18px;
+}
+*{box-sizing:border-box;font-family:'Inter',sans-serif}
+body{margin:0;background:var(--bg)}
+.app{display:flex;min-height:100vh}
+.sidebar{width:250px;background:#fff;box-shadow:var(--shadow);padding:28px 18px}
+.brand{font-size:1.4rem;font-weight:700;color:var(--primary)}
+.sidebar nav a{display:block;padding:12px;border-radius:10px;color:var(--muted);text-decoration:none}
+.sidebar nav a.active,.sidebar nav a:hover{background:var(--primary);color:#fff}
+.profile{margin-top:20px;display:flex;gap:10px;align-items:center}
+.profile img{width:36px;height:36px;border-radius:50%}
+.main{flex:1;padding:30px}
+.stats-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.card{background:#fff;border-radius:18px;padding:20px;box-shadow:var(--shadow)}
+.card-value{font-size:2rem;font-weight:700;color:var(--primary)}
+.pending-requests,.audit-log{background:#fff;border-radius:18px;padding:20px;margin-top:20px}
+.btn{padding:6px 12px;border:none;border-radius:6px;font-weight:600;cursor:pointer}
+.btn-approve{background:var(--success);color:#fff}
+.btn-reject{background:var(--danger);color:#fff}
+.chat-btn{position:fixed;bottom:25px;right:25px;background:var(--primary);color:#fff;border:none;border-radius:50%;width:60px;height:60px;font-size:1.6rem}
+table{width:100%;border-collapse:collapse}
+th,td{padding:8px;border-bottom:1px solid #eee}
+</style>
+</head>
+
+<body>
+
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">🟦 Smart Attendance</div>
+    <nav>
+      <a class="active">Dashboard</a>
+      <a>Students</a>
+      <a>Devices</a>
+      <a>Logs</a>
+      <a>Settings</a>
+      <a onclick="logout()">Logout</a>
+    </nav>
+
+    <div class="profile">
+      <img id="adminPic">
+      <div>
+        <strong id="adminName"></strong><br>
+        <small id="adminRole"></small>
+      </div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <h2>Admin Dashboard</h2>
+
+    <div class="stats-cards">
+      <div class="card"><div>Total Students</div><div class="card-value" id="studentsCount">–</div></div>
+      <div class="card"><div>Active Sessions</div><div class="card-value" id="sessionsCount">–</div></div>
+      <div class="card"><div>Low Attendance</div><div class="card-value" id="lowAttendance">–</div></div>
+      <div class="card"><div>High Risk</div><div class="card-value" id="highRisk">–</div></div>
+    </div>
+
+    <div class="pending-requests">
+      <h3>Device Change Requests</h3>
+      <table id="requestsTable"></table>
+    </div>
+
+    <div class="audit-log">
+      <h3>Audit Log</h3>
+      <ul id="auditList"></ul>
+    </div>
+  </main>
+</div>
+
+<button class="chat-btn">💬</button>
+
+<script>
+/* ================= CONFIG ================= */
+const API = "http://localhost:5000/api"; // change if needed
+const token = localStorage.getItem("adminToken");
+
+if (!token) location.href = "login.html";
+
+/* ================= INIT ================= */
+document.addEventListener("DOMContentLoaded", () => {
+  loadAdmin();
+  loadStats();
+  loadRequests();
+  loadAudit();
+
+  setInterval(loadStats, 5000);
+  setInterval(loadAudit, 4000);
+});
+
+/* ================= ADMIN ================= */
+async function loadAdmin(){
+  const r = await fetch(${API}/admin/profile, {
+    headers:{Authorization:Bearer ${token}}
+  });
+  const a = await r.json();
+  adminName.textContent = a.name;
+  adminRole.textContent = a.role;
+  adminPic.src = a.photo;
+}
+
+/* ================= STATS ================= */
+async function loadStats(){
+  const r = await fetch(${API}/dashboard/stats, {
+    headers:{Authorization:Bearer ${token}}
+  });
+  const d = await r.json();
+  studentsCount.textContent = d.students;
+  sessionsCount.textContent = d.sessions;
+  lowAttendance.textContent = d.lowAttendance;
+  highRisk.textContent = d.highRisk;
+}
+
+/* ================= REQUESTS ================= */
+async function loadRequests(){
+  const r = await fetch(${API}/device-requests, {
+    headers:{Authorization:Bearer ${token}}
+  });
+  const list = await r.json();
+
+  let html = `
+    <tr>
+      <th>Student</th>
+      <th>Old Device</th>
+      <th>New Device</th>
+      <th>Action</th>
+    </tr>`;
+
+  list.forEach(x=>{
+    html+=`
+      <tr>
+        <td>${x.studentName}</td>
+        <td>${x.oldDevice}</td>
+        <td>${x.newDevice}</td>
+        <td>
+          <button class="btn btn-approve" onclick="approve(${x.id})">Approve</button>
+          <button class="btn btn-reject" onclick="reject(${x.id})">Reject</button>
+        </td>
+      </tr>`;
+  });
+  requestsTable.innerHTML = html;
+}
+
+/* ================= ACTIONS ================= */
+async function approve(id){
+  await fetch(${API}/device-requests/approve,{
+    method:"POST",
+    headers:{
+      "Content-Type":"application/json",
+      Authorization:Bearer ${token}
+    },
+    body:JSON.stringify({id})
+  });
+  loadRequests(); loadAudit();
+}
+
+async function reject(id){
+  await fetch(${API}/device-requests/reject,{
+    method:"POST",
+    headers:{
+      "Content-Type":"application/json",
+      Authorization:Bearer ${token}
+    },
+    body:JSON.stringify({id})
+  });
+  loadRequests(); loadAudit();
+}
+
+/* ================= AUDIT ================= */
+async function loadAudit(){
+  const r = await fetch(${API}/audit-log, {
+    headers:{Authorization:Bearer ${token}}
+  });
+  const logs = await r.json();
+  auditList.innerHTML = logs.map(
+    l=><li>${l.time} – ${l.message}</li>
+  ).join("");
+}
+
+/* ================= LOGOUT ================= */
+function logout(){
+  localStorage.removeItem("adminToken");
+  location.href="login.html";
+}
+</script>
+
+</body>
+</html>
