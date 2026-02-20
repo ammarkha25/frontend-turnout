@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Turnout Tracker | Faculty Dashboard</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+:root{
+  --blue:#1d4ed8;
+  --light:#e8efff;
+  --bg:#f5f7fb;
+  --card:#fff;
+  --muted:#64748b;
+  --green:#22c55e;
+  --red:#ef4444;
+  --orange:#f97316;
+}
+
+*{box-sizing:border-box;font-family:"Segoe UI",sans-serif}
+body{margin:0;background:var(--bg)}
+.app{display:flex;height:100vh}
+
+/* SIDEBAR */
+.sidebar{
+  width:240px;background:#fff;padding:20px;
+  border-right:1px solid #e5e7eb;
+  display:flex;flex-direction:column;
+}
+.brand{
+  display:flex;gap:10px;align-items:center;
+  font-weight:700;font-size:18px;color:var(--blue);
+  margin-bottom:30px;
+}
+.brand-icon{
+  width:36px;height:36px;border-radius:10px;
+  background:var(--blue);color:#fff;
+  display:flex;align-items:center;justify-content:center;
+}
+.nav a{
+  padding:10px 14px;border-radius:12px;
+  color:var(--muted);cursor:pointer;
+  display:block;margin-bottom:6px;
+}
+.nav a.active{background:var(--light);color:var(--blue)}
+
+.user{
+  margin-top:auto;background:#f1f5f9;
+  padding:12px;border-radius:10px;
+  font-size:14px;
+}
+
+/* MAIN */
+.main{flex:1;padding:24px;overflow-y:auto}
+.topbar{display:flex;justify-content:space-between;align-items:center}
+.cards{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+  gap:20px;margin-top:20px;
+}
+.card{
+  background:var(--card);
+  padding:20px;border-radius:16px;
+}
+
+button{
+  padding:10px 14px;border-radius:8px;
+  border:none;background:var(--blue);
+  color:#fff;cursor:pointer;
+}
+
+.badge{
+  padding:4px 10px;border-radius:12px;
+  font-size:12px;
+}
+.live{background:#ecfeff;color:#0369a1}
+.danger{background:#fee2e2;color:#991b1b}
+.good{background:#dcfce7;color:#166534}
+
+.lecture{
+  padding:12px 0;border-bottom:1px solid #e5e7eb;
+  display:flex;justify-content:space-between;align-items:center;
+}
+
+.small{font-size:12px;color:var(--muted)}
+</style>
+</head>
+
+<body>
+
+<div class="app">
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="brand">
+    <div class="brand-icon">◎</div>
+    Turnout Tracker
+  </div>
+
+  <nav class="nav">
+    <a class="active">Dashboard</a>
+    <a>Lectures</a>
+    <a>Analytics</a>
+    <a>Reports</a>
+    <a>Settings</a>
+  </nav>
+
+  <div class="user">
+    <strong id="facultyName"></strong><br>
+    <span id="facultyDept"></span>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<main class="main">
+
+  <div class="topbar">
+    <h2>Faculty Dashboard</h2>
+    <span class="small" id="sessionStatus"></span>
+  </div>
+
+  <!-- KPI -->
+  <div class="cards">
+    <div class="card">
+      <strong>Today’s Lectures</strong>
+      <h2 id="lectureCount">–</h2>
+    </div>
+
+    <div class="card">
+      <strong>Active Session</strong>
+      <h2 id="activeSession">No</h2>
+    </div>
+
+    <div class="card">
+      <strong>Avg Attendance</strong>
+      <h2 id="avgAttendance">–%</h2>
+    </div>
+  </div>
+
+  <!-- TODAY LECTURES -->
+  <div class="card" style="margin-top:20px">
+    <strong>Today’s Schedule</strong>
+    <div id="lectureList"></div>
+  </div>
+
+  <!-- ANALYTICS -->
+  <div class="card" style="margin-top:20px">
+    <strong>Quick Analytics</strong>
+    <div id="analytics"></div>
+  </div>
+
+</main>
+</div>
+
+<script>
+/* ========= API HELPER ========= */
+async function api(url, options = {}) {
+  const res = await fetch(url, {
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    ...options
+  });
+  return res.json();
+}
+
+/* ========= LOAD FACULTY ========= */
+async function loadFaculty() {
+  const f = await api("/api/faculty/me");
+  facultyName.textContent = f.name;
+  facultyDept.textContent = f.department;
+}
+
+/* ========= LOAD TODAY ========= */
+async function loadTodayLectures() {
+  const lectures = await api("/api/faculty/today-lectures");
+
+  lectureCount.textContent = lectures.length;
+  lectureList.innerHTML = lectures.map(l => `
+    <div class="lecture">
+      <div>
+        <strong>${l.subject}</strong><br>
+        <span class="small">${l.time} • ${l.room}</span>
+      </div>
+      <div>
+        <span class="badge ${l.active ? 'live' : 'good'}">
+          ${l.active ? 'Live' : 'Inactive'}
+        </span>
+        <button onclick="toggleSession(${l.id}, ${l.active})">
+          ${l.active ? 'Stop' : 'Start'}
+        </button>
+      </div>
+    </div>
+  `).join("");
+
+  activeSession.textContent =
+    lectures.some(l => l.active) ? "Yes" : "No";
+}
+
+/* ========= SESSION ========= */
+async function toggleSession(id, active) {
+  await api(`/api/faculty/session/${active ? 'stop' : 'start'}`, {
+    method:"POST",
+    body: JSON.stringify({ lectureId:id })
+  });
+  loadTodayLectures();
+}
+
+/* ========= ANALYTICS ========= */
+async function loadAnalytics() {
+  const a = await api("/api/faculty/analytics");
+
+  avgAttendance.textContent = a.average + "%";
+  analytics.innerHTML = `
+    <p>At-risk students: <strong>${a.atRisk}</strong></p>
+    <p>Best performing subject: <strong>${a.bestSubject}</strong></p>
+  `;
+}
+
+/* ========= INIT ========= */
+loadFaculty();
+loadTodayLectures();
+loadAnalytics();
+setInterval(loadTodayLectures, 30000);
+</script>
+
+</body>
+</html>
