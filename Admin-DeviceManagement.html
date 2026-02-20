@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Device Management | Admin</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+:root{
+  --blue:#1d4ed8;
+  --light:#e8efff;
+  --bg:#f5f7fb;
+  --card:#ffffff;
+  --muted:#64748b;
+  --green:#22c55e;
+  --red:#ef4444;
+  --orange:#f97316;
+}
+
+*{box-sizing:border-box;font-family:"Segoe UI",sans-serif}
+body{margin:0;background:var(--bg)}
+.app{display:flex;height:100vh}
+
+/* SIDEBAR */
+.sidebar{
+  width:240px;
+  background:#fff;
+  padding:20px;
+  border-right:1px solid #e5e7eb;
+}
+.brand{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  font-size:18px;
+  font-weight:700;
+  color:var(--blue);
+  margin-bottom:30px;
+}
+.brand-icon{
+  width:36px;height:36px;
+  border-radius:10px;
+  background:var(--blue);
+  color:#fff;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.nav a{
+  display:block;
+  padding:10px 14px;
+  border-radius:12px;
+  color:var(--muted);
+  margin-bottom:6px;
+  cursor:pointer;
+}
+.nav a.active{
+  background:var(--light);
+  color:var(--blue);
+}
+
+/* MAIN */
+.main{
+  flex:1;
+  padding:24px;
+  overflow-y:auto;
+}
+
+.card{
+  background:#fff;
+  padding:20px;
+  border-radius:16px;
+  margin-bottom:20px;
+}
+
+table{
+  width:100%;
+  border-collapse:collapse;
+}
+th,td{
+  padding:12px;
+  border-bottom:1px solid #e5e7eb;
+  text-align:left;
+}
+
+button{
+  padding:8px 12px;
+  border-radius:8px;
+  border:none;
+  cursor:pointer;
+}
+
+.approve{background:#22c55e;color:#fff}
+.reject{background:#ef4444;color:#fff}
+.revoke{background:#f97316;color:#fff}
+
+.badge{
+  padding:4px 10px;
+  border-radius:12px;
+  font-size:12px;
+}
+.active{background:#dcfce7;color:#166534}
+.pending{background:#fef3c7;color:#92400e}
+.blocked{background:#fee2e2;color:#991b1b}
+
+.small{font-size:12px;color:var(--muted)}
+</style>
+</head>
+
+<body>
+
+<div class="app">
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="brand">
+    <div class="brand-icon">◎</div>
+    Turnout Tracker
+  </div>
+
+  <nav class="nav">
+    <a>Dashboard</a>
+    <a>Student Directory</a>
+    <a class="active">Device Management</a>
+    <a>Security Logs</a>
+    <a>System Settings</a>
+  </nav>
+</aside>
+
+<!-- MAIN -->
+<main class="main">
+
+<h2>Device Management</h2>
+
+<!-- ACTIVE DEVICES -->
+<div class="card">
+  <strong>Active Registered Devices</strong>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Student</th>
+        <th>Device</th>
+        <th>Device ID</th>
+        <th>Status</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody id="deviceTable"></tbody>
+  </table>
+</div>
+
+<!-- DEVICE REQUESTS -->
+<div class="card">
+  <strong>Pending Device Change Requests</strong>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Student</th>
+        <th>Old Device</th>
+        <th>New Device</th>
+        <th>Requested On</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody id="requestTable"></tbody>
+  </table>
+</div>
+
+</main>
+</div>
+
+<script>
+/* API HELPER */
+async function api(url, options={}){
+  const res = await fetch(url,{
+    credentials:"include",
+    headers:{ "Content-Type":"application/json" },
+    ...options
+  });
+  return res.json();
+}
+
+/* LOAD DEVICES */
+async function loadDevices(){
+  const devices = await api("/api/admin/devices");
+  deviceTable.innerHTML = devices.map(d=>`
+    <tr>
+      <td>${d.student}</td>
+      <td>${d.device}</td>
+      <td>${d.deviceId}</td>
+      <td><span class="badge active">Active</span></td>
+      <td>
+        <button class="revoke" onclick="revokeDevice('${d.deviceId}')">
+          Revoke
+        </button>
+      </td>
+    </tr>
+  `).join("");
+}
+
+/* LOAD REQUESTS */
+async function loadRequests(){
+  const requests = await api("/api/admin/device-requests");
+  requestTable.innerHTML = requests.map(r=>`
+    <tr>
+      <td>${r.student}</td>
+      <td>${r.oldDevice}</td>
+      <td>${r.newDevice}</td>
+      <td>${r.date}</td>
+      <td>
+        <button class="approve" onclick="approve('${r.id}')">Approve</button>
+        <button class="reject" onclick="reject('${r.id}')">Reject</button>
+      </td>
+    </tr>
+  `).join("");
+}
+
+/* ACTIONS */
+async function approve(id){
+  await api("/api/admin/device/approve",{
+    method:"POST",
+    body:JSON.stringify({requestId:id})
+  });
+  loadDevices(); loadRequests();
+}
+
+async function reject(id){
+  await api("/api/admin/device/reject",{
+    method:"POST",
+    body:JSON.stringify({requestId:id})
+  });
+  loadRequests();
+}
+
+async function revokeDevice(deviceId){
+  await api("/api/admin/device/revoke",{
+    method:"POST",
+    body:JSON.stringify({deviceId})
+  });
+  loadDevices();
+}
+
+/* INIT */
+loadDevices();
+loadRequests();
+</script>
+
+</body>
+</html>
