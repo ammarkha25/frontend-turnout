@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Reports – Smart Attendance</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+:root{
+  --blue:#2563eb;
+  --bg:#f5f7fb;
+  --card:#ffffff;
+  --muted:#64748b;
+}
+*{box-sizing:border-box;font-family:Inter,system-ui}
+body{margin:0;background:var(--bg)}
+.container{max-width:1400px;margin:auto;padding:20px}
+
+/* NAVBAR */
+nav{
+  display:flex;justify-content:space-between;align-items:center;
+  background:#fff;padding:14px 20px;border-radius:12px
+}
+nav a{
+  color:#334155;text-decoration:none;font-weight:500;
+  margin-right:20px;cursor:pointer
+}
+nav a.active{color:var(--blue)}
+nav input{
+  padding:8px 12px;border-radius:8px;
+  border:1px solid #e2e8f0
+}
+
+/* COMMON */
+.card{
+  background:var(--card);
+  padding:18px;border-radius:14px;
+  box-shadow:0 6px 18px rgba(0,0,0,.05)
+}
+.btn{
+  padding:10px 16px;border-radius:8px;
+  border:1px solid #e2e8f0;background:#fff;cursor:pointer
+}
+.btn.primary{
+  background:var(--blue);color:#fff;border:none
+}
+h2,h3{margin:0}
+p{color:var(--muted)}
+
+/* FILTER GRID */
+.filters{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:16px;margin-top:20px
+}
+select,input{
+  width:100%;padding:10px;
+  border-radius:8px;border:1px solid #e2e8f0
+}
+
+/* TABLE */
+table{width:100%;border-collapse:collapse;margin-top:16px}
+th,td{padding:12px;text-align:left}
+th{color:var(--muted)}
+tr:not(:last-child){border-bottom:1px solid #eef2f7}
+
+/* ACTIONS */
+.actions{
+  display:flex;gap:10px;margin-top:16px
+}
+</style>
+</head>
+
+<body>
+<div class="container">
+
+<!-- NAVBAR -->
+<nav>
+  <div>
+    <strong>⭐ Smart Attendance</strong>
+    <a onclick="navigate('dashboard')">Dashboard</a>
+    <a onclick="navigate('classes')">Classes</a>
+    <a class="active">Reports</a>
+    <a onclick="navigate('settings')">Settings</a>
+  </div>
+  <div>
+    <input placeholder="Search students…">
+    <button class="btn" onclick="logout()">Logout</button>
+  </div>
+</nav>
+
+<!-- HEADER -->
+<div style="margin-top:20px">
+  <h2>Reports</h2>
+  <p>View and collect student attendance & academic reports</p>
+</div>
+
+<!-- FILTERS -->
+<div class="card filters">
+  <div>
+    <label>Class</label>
+    <select>
+      <option>— Select Class —</option>
+    </select>
+  </div>
+  <div>
+    <label>Student</label>
+    <select>
+      <option>All Students</option>
+    </select>
+  </div>
+  <div>
+    <label>From Date</label>
+    <input type="date">
+  </div>
+  <div>
+    <label>To Date</label>
+    <input type="date">
+  </div>
+
+  <div>
+    <label>Report Type</label>
+    <select>
+      <option>Attendance</option>
+      <option>Results</option>
+      <option>Attendance + Results</option>
+    </select>
+  </div>
+</div>
+
+<!-- ACTION BUTTONS -->
+<div class="actions">
+  <button class="btn primary" onclick="generateReport()">Generate Report</button>
+  <button class="btn" onclick="exportCSV()">Export CSV</button>
+  <button class="btn" onclick="window.print()">Print</button>
+</div>
+
+<!-- REPORT TABLE -->
+<div class="card" style="margin-top:16px">
+  <h3>Report Output</h3>
+  <p>Generated data will appear here</p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Student Name</th>
+        <th>Student ID</th>
+        <th>Attendance %</th>
+        <th>Total Classes</th>
+        <th>Marks</th>
+        <th>Grade</th>
+      </tr>
+    </thead>
+    <tbody id="reportTable">
+      <tr>
+        <td colspan="6" style="color:#94a3b8">
+          No report generated
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+</div>
+
+<script>
+function navigate(page){
+  alert(`Navigate to ${page} page`);
+}
+
+function generateReport(){
+  const table = document.getElementById("reportTable");
+  table.innerHTML = `
+    <tr>
+      <td colspan="6" style="color:#94a3b8">
+        Report fetched from database
+      </td>
+    </tr>
+  `;
+}
+
+function exportCSV(){
+  alert("Export triggered (DB data ready)");
+}
+
+function logout(){
+  alert("Logged out");
+  location.reload();
+}
+</script>
+
+</body>
+</html>
